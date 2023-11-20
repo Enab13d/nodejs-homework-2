@@ -1,0 +1,3 @@
+DB_HOST = <database connection string>
+PORT =3 <port number>
+SECRET_KEY = <secret word to encrypt data>
