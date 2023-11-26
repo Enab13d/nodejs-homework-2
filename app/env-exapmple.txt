@@ -1,0 +1,5 @@
+DB_HOST = <database connection string>
+PORT =3 <port number>
+SECRET_KEY = <secret word to encrypt data>
+EMAIL_FROM = senders email
+ELASTIC_EMAIL_API_KEY = respective key from elasticemail service

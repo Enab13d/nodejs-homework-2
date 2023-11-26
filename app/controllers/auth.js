@@ -6,6 +6,10 @@ const { SECRET_KEY } = process.env;
 const gravatar = require("gravatar");
 const path = require("path");
 const fs = require("fs/promises");
+const { nanoid } = require("nanoid");
+const {
+  emailService: { sendEmail, createEmail },
+} = require("../helpers");
 
 const publicDir = path.join(__dirname, "../", "public", "avatars");
 
@@ -17,7 +21,14 @@ const register = async (req, res, next) => {
   }
   const hashPassword = await bcrypt.hash(password, 10);
   const avatarURL = gravatar.url(email);
-  const newUser = await User.create({ ...req.body, password: hashPassword });
+  const verificationToken = nanoid();
+  const newUser = await User.create({
+    ...req.body,
+    password: hashPassword,
+    verificationToken,
+  });
+  const verificationEmail = createEmail(email, verificationToken);
+  sendEmail(verificationEmail);
   res.status(201).json({
     user: {
       email: newUser.email,
@@ -35,6 +46,9 @@ const login = async (req, res, next) => {
   const isPasswordMatch = bcrypt.compare(password, user.password);
   if (!isPasswordMatch) {
     next(HTTPError(401, "Email or password is wrong"));
+  }
+  if (!user.verify) {
+    next(HTTPError(400, "Email is not verified"));
   }
   const payload = {
     id: user._id,
@@ -96,6 +110,29 @@ const updateAvatar = async (req, res) => {
   });
 };
 
+const verify = async (req, res, next) => {
+  const { verificationToken } = req.params;
+  const user = await User.findOne({ verificationToken });
+  if (!user._id) {
+    throw HTTPError(404);
+  }
+  await User.findByIdAndUpdate(user._id, {
+    verify: true,
+    verificationToken: null,
+  });
+  res.status(200).json({ message: "Verification successful" });
+};
+const resendVerificationEmail = async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (user.verify) {
+    throw HTTPError(400, "Verification has already been passed");
+  }
+  const verificationEmail = createEmail(email, user.verificationToken);
+  sendEmail(verificationEmail);
+  res.status(200).json({ message: "Verification email sent" });
+};
+
 module.exports = {
   register: ctrlWrapper(register),
   login: ctrlWrapper(login),
@@ -103,4 +140,6 @@ module.exports = {
   getCurrent: ctrlWrapper(getCurrent),
   updateSubscription: ctrlWrapper(updateSubscription),
   updateAvatar: ctrlWrapper(updateAvatar),
+  verify: ctrlWrapper(verify),
+  resendVerificationEmail: ctrlWrapper(resendVerificationEmail),
 };

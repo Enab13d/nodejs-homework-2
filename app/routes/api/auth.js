@@ -2,9 +2,8 @@ const express = require("express");
 const { validateBody, authenticate } = require("../../middleware");
 const { schemas } = require("../../schemas");
 const { User } = require("../../controllers");
-const {upload} = require('../../middleware')
+const { upload } = require("../../middleware");
 const router = express.Router();
-
 
 router.post("/register", validateBody(schemas.signUpSchema), User.register);
 
@@ -20,5 +19,19 @@ router.patch(
   validateBody(schemas.updateSubscriptionSchema),
   User.updateSubscription
 );
-router.patch('/avatars', authenticate, upload.single('avatarURL'), User.updateAvatar)
+router.patch(
+  "/avatars",
+  authenticate,
+  upload.single("avatarURL"),
+  User.updateAvatar
+);
+
+router.get("/verify/:verificationToken", User.verify);
+
+router.get(
+  "/verify",
+  validateBody(schemas.verificationSchema),
+  User.resendVerificationEmail
+);
+
 module.exports = router;
